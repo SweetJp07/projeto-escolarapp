@@ -30,4 +30,11 @@ Este projeto é um monorepo que contém duas aplicações separadas:
 * **Vite:** Ferramenta de build e servidor de desenvolvimento local.
 * **CSS:** Estilização dos componentes.
 
-## 📁 Estrutura do Projeto
+## 📁 Fucionamento do código
+* Baixar os dois arquivos referente ao backend e frontend;
+* Após baixar, abrir o terminal tendo como endereço as pastas do front e do back; 
+* Com o terminal aberto o código (npm run dev) deve ser executando em ambas pastas, para começar a rodar o servidor local tanto para o back quanto para o front;
+* Com os servidores locais rodando é necessário copiar o endereço local a partir da porta selecionada pelo seu computador para rodar o front end, (essa informação aparece ao rodar o frontend);
+* Por fim é só colar o endereço local do frontend no seu navegador de preferência.
+
+  Prontinho, se tiver seguido todos os passos corretamente o protótipo estará rodando em sua máquina.
