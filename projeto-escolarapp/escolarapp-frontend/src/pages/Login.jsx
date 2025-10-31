@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import './Auth.css';
-import logo from './assets/logo.png';
+import '../styles/Auth.css';
+import logo from '../assets/logo.png';
+import { useNavigate } from 'react-router-dom';
 
-function Login({ onSwitch }) {
+function Login() { 
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -18,11 +20,22 @@ function Login({ onSwitch }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
+      
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.message);
       }
-      setMessage(data.message);
+      
+      if (data.token) {
+        
+        localStorage.setItem('token', data.token);
+
+        navigate('/home'); 
+
+      } else {
+        throw new Error("Erro: Token não recebido do servidor.");
+      }
+
     } catch (error) {
       setMessage(error.message);
       console.error('Erro no login:', error);
@@ -63,11 +76,11 @@ function Login({ onSwitch }) {
         <button type="submit" className="auth-button">Acessar</button>
       </form>
 
-      {message && <p>{message}</p>}
+      {message && <p>{message}</p>} 
 
       <div className="switch-form-text">
         Não tem uma conta?{' '}
-        <button onClick={onSwitch} className="switch-form-button">
+        <button onClick={() => navigate('/cadastro')} className="switch-form-button">
           Cadastre-se
         </button>
       </div>

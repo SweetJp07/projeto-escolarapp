@@ -1,0 +1,68 @@
+# A 'version' não é mais necessária nas versões recentes do Compose
+services:
+
+  # 1. Serviço do Banco de Dados (MySQL)
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: unless-stopped
+    environment:
+      # Define a senha de 'root' (obrigatório pelo MySQL)
+      MYSQL_ROOT_PASSWORD: rootpassword123
+      # Cria um banco de dados inicial
+      MYSQL_DATABASE: db_escolarapp
+      # Cria um usuário e senha para a sua aplicação (boa prática)
+      MYSQL_USER: usuario_app
+      MYSQL_PASSWORD: senha_app_123
+    ports:
+      # Mapeia a porta do seu PC (3306) para a porta do container (3306)
+      - "3307:3306"
+    volumes:
+      # Garante que os dados do seu banco não se percam
+      - ./escolarapp-backend/db:/docker-entrypoint-initdb.d
+      - mysql_data:/var/lib/mysql
+      
+    healthcheck:
+      # Comando para verificar se o MySQL está PRONTO para conexões
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2. Serviço do Backend
+  backend:
+    # Constrói a imagem a partir da pasta ./backend
+    build: ./escolarapp-backend
+    container_name: backend
+    restart: unless-stopped
+    ports:
+      # Mapeia a porta 3000 do seu PC para a 3000 do container
+      - "3000:3000"
+    environment:
+      # Passa as credenciais do banco para sua aplicação
+      DB_HOST: mysql           # O nome do serviço do banco!
+      DB_USER: usuario_app
+      DB_PASSWORD: senha_app_123
+      DB_NAME: db_escolarapp
+      DB_PORT: 3306
+    depends_on:
+      # Diz ao backend para esperar...
+      mysql:
+        condition: service_healthy # ...até o healthcheck do MySQL passar!
+
+  # 3. Serviço do Frontend
+  frontend:
+    # Constrói a imagem a partir da pasta ./frontend
+    build: ./escolarapp-frontend
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      # Mapeia a porta 5173 do seu PC para a 5173 do container
+      - "5173:5173"
+    depends_on:
+      # Espera o backend iniciar primeiro
+      - backend
+
+# Declara o volume "gaveta" que o MySQL vai usar para guardar os dados
+volumes:
+  mysql_data:

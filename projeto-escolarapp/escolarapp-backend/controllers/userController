@@ -1,74 +1,95 @@
+
 const bcrypt = require('bcryptjs');
-const db = require('../config/db');
+const jwt = require('jsonwebtoken');
+const userModel = require('../models/userModel'); 
 
 exports.register = async (req, res) => {
-  console.log("---");
-  console.log("1. Rota de registro foi chamada.");
   const { username, password, cpf, email, address, role } = req.body;
-  console.log("Dados recebidos:", req.body);
 
   if (!username || !password || !cpf || !email || !role) {
-    console.log("ERRO: Campos obrigatórios faltando.");
     return res.status(400).json({ message: 'Todos os campos obrigatórios devem ser preenchidos!' });
   }
 
   try {
-    console.log("2. Dentro do bloco try. Verificando se usuário existe...");
-    const [userExists] = await db.query(
-      'SELECT * FROM users WHERE username = ? OR cpf = ? OR email = ?',
-      [username, cpf, email]
-    );
-    console.log("3. Consulta SELECT executada. Usuários encontrados:", userExists.length);
+    const existingUsers = await userModel.findExistingUser(username, cpf, email);
 
-    if (userExists.length > 0) {
-      console.log("ERRO: Usuário, CPF ou E-mail já existe.");
-      return res.status(400).json({ message: 'Usuário, CPF ou E-mail já cadastrado!' });
+    if (existingUsers.length > 0) {
+      return res.status(409).json({ message: 'Usuário, CPF ou E-mail já cadastrado!' });
     }
 
-    console.log("4. Usuário não existe. Criptografando senha...");
     const hashedPassword = await bcrypt.hash(password, 10);
-    console.log("5. Senha criptografada. Inserindo no banco...");
 
-    const [insertResult] = await db.query(
-      'INSERT INTO users (username, password, cpf, email, address, role) VALUES (?, ?, ?, ?, ?, ?)',
-      [username, hashedPassword, cpf, email, address, role]
-    );
-    console.log("6. Consulta INSERT executada. Linhas afetadas:", insertResult.affectedRows);
+    await userModel.createUser(username, hashedPassword, cpf, email, address, role);
 
-    console.log("7. Enviando resposta de sucesso!");
     return res.status(201).json({ message: 'Usuário cadastrado com sucesso!' });
 
   } catch (err) {
-    console.error("!!! ERRO NO BLOCO CATCH:", err);
+    
+    
+    console.error("!!! ERRO NO REGISTRO:", err); 
+
+    if (err.code) {
+      switch (err.code) {
+        case 'ER_DUP_ENTRY':
+          return res.status(409).json({ 
+            message: 'Conflito: Usuário, CPF ou E-mail já existe.',
+            errorCode: err.code 
+          });
+
+        case 'ER_DATA_TRUNCATED':
+        case 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD':
+          return res.status(400).json({ 
+            message: 'Dados inválidos. Verifique se o "role" está correto (aluno, responsavel, etc).',
+            errorCode: err.code 
+          });
+        
+        case 'ER_BAD_NULL_ERROR':
+           return res.status(400).json({ 
+            message: 'Um campo obrigatório foi enviado como nulo.',
+            errorCode: err.code 
+          });
+      }
+    }
+
     return res.status(500).json({ message: 'Erro interno no servidor!' });
   }
 };
 
 exports.login = async (req, res) => {
-    const { username, password } = req.body;
-  
-    if (!username || !password) {
-      return res.status(400).json({ message: 'Usuário e senha são obrigatórios!' });
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ message: 'Usuário e senha são obrigatórios!' });
+  }
+
+  try {
+    const user = await userModel.findByUsername(username);
+
+    if (!user) {
+      return res.status(401).json({ message: 'Credenciais inválidas!' });
     }
-  
-    try {
-      const [results] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
-  
-      if (results.length === 0) {
-        return res.status(401).json({ message: 'Credenciais inválidas!' });
-      }
-  
-      const user = results[0];
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-  
-      if (!isPasswordValid) {
-        return res.status(401).json({ message: 'Credenciais inválidas!' });
-      }
-  
-      return res.status(200).json({ message: 'Login bem-sucedido!' });
-  
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ message: 'Erro interno no servidor!' });
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Credenciais inválidas!' });
     }
-  };
+
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        role: user.role 
+      },
+      process.env.JWT_SECRET,
+      { 
+        expiresIn: '8h'
+      } 
+    );
+
+    return res.status(200).json({ token: token });
+
+  } catch (err) {
+    console.error("Erro no login:", err);
+    return res.status(500).json({ message: 'Erro interno no servidor!' });
+  }
+};

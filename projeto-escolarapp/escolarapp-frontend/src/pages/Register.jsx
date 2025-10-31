@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import './Auth.css';
-import logo from './assets/logo.png';
+import '../styles/Auth.css';
+import logo from '../assets/logo.png';
+import { useNavigate } from 'react-router-dom';
 
-function Register({ onSwitch }) {
-
+function Register() { 
+  
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [cpf, setCpf] = useState('');
@@ -11,6 +12,7 @@ function Register({ onSwitch }) {
   const [address, setAddress] = useState('');
   const [role, setRole] = useState('aluno');
   const [message, setMessage] = useState('');
+  const navigate = useNavigate(); 
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -20,7 +22,6 @@ function Register({ onSwitch }) {
       const response = await fetch('http://localhost:3000/api/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-
         body: JSON.stringify({ username, password, cpf, email, address, role }),
       });
 
@@ -29,7 +30,8 @@ function Register({ onSwitch }) {
 
       setMessage(data.message);
       alert('Cadastro realizado com sucesso! Agora você pode fazer o login.');
-      onSwitch();
+      
+      navigate('/'); 
 
     } catch (error) {
       setMessage(error.message);
@@ -45,7 +47,7 @@ function Register({ onSwitch }) {
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit}>
-
+        
         <div className="form-group">
           <label htmlFor="username">Login</label>
           <input type="text" id="username" value={username} onChange={(e) => setUsername(e.target.value)} required />
@@ -83,7 +85,7 @@ function Register({ onSwitch }) {
 
       <div className="switch-form-text">
         Já tem uma conta?{' '}
-        <button onClick={onSwitch} className="switch-form-button">
+        <button onClick={() => navigate('/')} className="switch-form-button">
           Faça o login
         </button>
       </div>
